@@ -6,7 +6,7 @@ import discord
 from discord.ext import commands, tasks
 
 MY_ID = 1337973255977570345
-APPLICATION_ID = 1495797765027008533
+APPLICATION_ID = 1521150234024214718
 
 banned_users = set()
 muted_users = {}
@@ -23,9 +23,9 @@ def is_me():
 async def keep_presence_alive():
     activity = discord.Activity(
         type=discord.ActivityType.playing,
-        name="love her.",
-        details="I love sleeping",
-        state="sleeping",
+        name=".gg/36EAyW5Z4F",
+        details="Read Bio",
+        state="Germany",
         application_id=APPLICATION_ID,
         buttons=[
             discord.ActivityButton("dc", "https://discord.gg/36EAyW5Z4F"),

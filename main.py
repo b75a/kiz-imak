@@ -15,10 +15,29 @@ ping_history = {}
 
 bot = commands.Bot(command_prefix='.', self_bot=True, help_command=None)
 
+
 def is_me():
     def predicate(ctx):
         return ctx.author.id == MY_ID
     return commands.check(predicate)
+
+
+async def respond(ctx, content: str):
+    """Edit own message, or reply if someone else used the command."""
+    if ctx.author.id == bot.user.id:
+        try:
+            await ctx.message.edit(content=content)
+            return
+        except Exception:
+            pass
+    try:
+        await ctx.message.reply(content, mention_author=False)
+    except Exception:
+        try:
+            await ctx.send(content)
+        except Exception:
+            pass
+
 
 @tasks.loop(minutes=5)
 async def keep_presence_alive():
@@ -35,6 +54,7 @@ async def keep_presence_alive():
     )
     await bot.change_presence(status=discord.Status.dnd, activity=activity)
 
+
 @bot.event
 async def on_ready():
     print(f"Logged in successfully as {bot.user} (ID: {bot.user.id})")
@@ -42,7 +62,8 @@ async def on_ready():
         keep_presence_alive.start()
     print("Rich Presence loop initialized.")
 
-# ── Public commands (everyone) ──────────────────────────────────────────────
+
+# ── Public commands (everyone can use) ──────────────────────────────────────
 
 @bot.command(aliases=["commands", "help"])
 async def cmd(ctx):
@@ -59,21 +80,24 @@ async def cmd(ctx):
         "`.ban @user` / `.unban @user`\n"
         "`.server <source_id>` – Clone roles & channels into current server"
     )
-    await ctx.message.edit(content=text)
+    await respond(ctx, text)
+
 
 @bot.command()
 async def ping(ctx):
     latency = round(bot.latency * 1000)
-    await ctx.message.edit(content=f"🏓 Pong! Latency: `{latency}ms`")
+    await respond(ctx, f"🏓 Pong! Latency: `{latency}ms`")
+
 
 @bot.command()
 async def donate(ctx):
-    await ctx.message.edit(content=(
+    await respond(ctx, (
         "**Donate**\n"
         "Litecoin: `LSC6QoQ9MsQ4C9U2QbVCjh82xC1TCTmRo8`\n"
         "Bitcoin: `bc1qw8flzl8jgug7eqng5xp8zzv94ylpmnpf6v7g25`\n\n"
         "Thanks for any amount of donate!"
     ))
+
 
 @bot.command()
 async def cat(ctx):
@@ -81,13 +105,14 @@ async def cat(ctx):
         async with aiohttp.ClientSession() as session:
             async with session.get("https://api.thecatapi.com/v1/images/search") as resp:
                 if resp.status != 200:
-                    await ctx.message.edit(content="😿 Couldn't fetch a cat right now.")
+                    await respond(ctx, "😿 Couldn't fetch a cat right now.")
                     return
                 data = await resp.json()
                 url = data[0]["url"]
-        await ctx.message.edit(content=url)
+        await respond(ctx, url)
     except Exception:
-        await ctx.message.edit(content="😿 Something went wrong while fetching a cat.")
+        await respond(ctx, "😿 Something went wrong while fetching a cat.")
+
 
 @bot.command(aliases=["qoute"])
 async def quote(ctx):
@@ -110,13 +135,14 @@ async def quote(ctx):
                             text = data.get("content", "")
                             author = data.get("author", "Unknown")
                         if text:
-                            await ctx.message.edit(content=f'💭 "{text}"\n— **{author}**')
+                            await respond(ctx, f'💭 "{text}"\n— **{author}**')
                             return
                 except Exception:
                     continue
-        await ctx.message.edit(content="❌ Couldn't fetch a quote right now.")
+        await respond(ctx, "❌ Couldn't fetch a quote right now.")
     except Exception:
-        await ctx.message.edit(content="❌ Something went wrong while fetching a quote.")
+        await respond(ctx, "❌ Something went wrong while fetching a quote.")
+
 
 @bot.command()
 async def joke(ctx):
@@ -124,14 +150,15 @@ async def joke(ctx):
         async with aiohttp.ClientSession() as session:
             async with session.get("https://official-joke-api.appspot.com/random_joke") as resp:
                 if resp.status != 200:
-                    await ctx.message.edit(content="❌ Couldn't fetch a joke.")
+                    await respond(ctx, "❌ Couldn't fetch a joke.")
                     return
                 data = await resp.json()
                 setup = data.get("setup", "")
                 punchline = data.get("punchline", "")
-        await ctx.message.edit(content=f"😂 **{setup}**\n\n||{punchline}||")
+        await respond(ctx, f"😂 **{setup}**\n\n||{punchline}||")
     except Exception:
-        await ctx.message.edit(content="❌ Something went wrong while fetching a joke.")
+        await respond(ctx, "❌ Something went wrong while fetching a joke.")
+
 
 @bot.command()
 async def rate(ctx, user: discord.User = None):
@@ -147,7 +174,8 @@ async def rate(ctx, user: discord.User = None):
         comment = "kinda cute 🤔"
     else:
         comment = "needs more cuteness 😢"
-    await ctx.message.edit(content=f"✨ Cuteness rating for {target}: **{score}/100** — {comment}")
+    await respond(ctx, f"✨ Cuteness rating for {target}: **{score}/100** — {comment}")
+
 
 # ── Owner only ──────────────────────────────────────────────────────────────
 
@@ -155,16 +183,18 @@ async def rate(ctx, user: discord.User = None):
 @is_me()
 async def ban(ctx, user: discord.User):
     banned_users.add(user.id)
-    await ctx.message.edit(content=f"🚫 Banned **{user.name}** from triggering the auto-responder.")
+    await respond(ctx, f"🚫 Banned **{user.name}** from triggering the auto-responder.")
+
 
 @bot.command()
 @is_me()
 async def unban(ctx, user: discord.User):
     if user.id in banned_users:
         banned_users.remove(user.id)
-        await ctx.message.edit(content=f"✅ Unbanned **{user.name}**.")
+        await respond(ctx, f"✅ Unbanned **{user.name}**.")
     else:
-        await ctx.message.edit(content=f"⚠️ **{user.name}** is not banned.")
+        await respond(ctx, f"⚠️ **{user.name}** is not banned.")
+
 
 @bot.command()
 @is_me()
@@ -175,15 +205,15 @@ async def server(ctx, source_id: int):
     """
     target = ctx.guild
     if target is None:
-        await ctx.message.edit(content="❌ Use this command inside a server.")
+        await respond(ctx, "❌ Use this command inside a server.")
         return
 
     source = bot.get_guild(source_id)
     if source is None:
-        await ctx.message.edit(content="❌ Source server not found (you must be in both servers).")
+        await respond(ctx, "❌ Source server not found (you must be in both servers).")
         return
 
-    await ctx.message.edit(content=f"⏳ Cloning from **{source.name}** → **{target.name}** ...\nThis can take a while.")
+    await respond(ctx, f"⏳ Cloning from **{source.name}** → **{target.name}** ...\nThis can take a while.")
 
     role_map = {}
     created_roles = 0
@@ -270,16 +300,16 @@ async def server(ctx, source_id: int):
             except Exception as e:
                 print(f"Channel fail {ch.name}: {e}")
 
-        await ctx.message.edit(
-            content=(
-                f"✅ Clone finished!\n"
-                f"Roles created: **{created_roles}**\n"
-                f"Channels/Categories created: **{created_channels}**\n"
-                f"From: `{source.name}` → `{target.name}`"
-            )
+        await respond(
+            ctx,
+            f"✅ Clone finished!\n"
+            f"Roles created: **{created_roles}**\n"
+            f"Channels/Categories created: **{created_channels}**\n"
+            f"From: `{source.name}` → `{target.name}`"
         )
     except Exception as e:
-        await ctx.message.edit(content=f"❌ Clone failed: `{e}`")
+        await respond(ctx, f"❌ Clone failed: `{e}`")
+
 
 # ── Auto-responder ──────────────────────────────────────────────────────────
 
@@ -323,6 +353,7 @@ async def on_message(message):
             await message.reply("this user is not awake, try it later.", mention_author=False)
         except discord.HTTPException:
             pass
+
 
 if __name__ == "__main__":
     token = os.getenv("DISCORD_TOKEN")

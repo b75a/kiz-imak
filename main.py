@@ -12,6 +12,7 @@ APPLICATION_ID = 1521150234024214718
 banned_users = set()
 muted_users = {}
 ping_history = {}
+auto_responder_enabled = True
 
 # self_bot=True alone often ignores commands from other users.
 # Public commands are handled manually in on_message instead.
@@ -98,6 +99,17 @@ async def on_ready():
 
 
 # ── Owner-only commands (still via command framework) ───────────────────────
+
+@bot.command()
+@is_me()
+async def toggle(ctx):
+    global auto_responder_enabled
+    auto_responder_enabled = not auto_responder_enabled
+    if auto_responder_enabled:
+        await reply_edit_or_send(ctx.message, "✅ Auto-responder **ON**")
+    else:
+        await reply_edit_or_send(ctx.message, "⏸ Auto-responder **OFF**")
+
 
 @bot.command()
 @is_me()
@@ -251,6 +263,7 @@ async def handle_public(message):
             "`.rate [@user]` – Cuteness 0-100\n"
             "`.cmd` – This list\n\n"
             "**Owner only**\n"
+            "`.toggle` – Auto-responder on/off\n"
             "`.ban @user` / `.unban @user`\n"
             "`.server <source_id>` – Clone roles & channels"
         ))
@@ -367,8 +380,10 @@ async def on_message(message):
     # 2) Owner commands (.ban / .unban / .server)
     await bot.process_commands(message)
 
-    # 3) Auto-responder on mention (not for own messages / banned)
+    # 3) Auto-responder on mention (not for own messages / banned / disabled)
     if message.author.id == bot.user.id:
+        return
+    if not auto_responder_enabled:
         return
     if message.author.id in banned_users:
         return
